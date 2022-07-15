@@ -2,54 +2,36 @@ package gweb
 import (
 	"log"
 	"net/http"
-	"fmt"
 )
-type ResponseWriter http.ResponseWriter
-type Request http.Request
-type HandleFunc func(ResponseWriter,*Request)
-type route_t struct{
-	Method string;
-	Pattern string
-}
+
 
 type Engine struct{
-	router map[route_t]HandleFunc
+	router *router_t
 }
 
+type handleFunc func(*Context)
+
 func New() (*Engine) {
-	log.SetPrefix("[gweb]")
-	return &Engine{make(map[route_t]HandleFunc)}
+	log.SetPrefix("[gweb] ")
+	return &Engine{newRouter()}
 }
 
 /* implement the handler interface */
 func (e *Engine) ServeHTTP(w http.ResponseWriter,req *http.Request) {
-	stub, ok := e.router[route_t{
-		Method: req.Method,
-		Pattern: req.URL.Path,
-	}]
-	log.Printf("Handle %s - %s",req.Host, req.URL)
-	if ok {
-		stub(ResponseWriter(w),(*Request)(req))
-	} else {
-		fmt.Fprintf(w,"404 Not Found : %s\n",req.URL)
-	}
+	e.router.handle(newContext(w,req))
 }
 
-
-func (e *Engine) addRoute(route route_t, handler HandleFunc) {
-	e.router[route] = handler
-	log.Printf("Established Route %s - %s",route.Method,route.Pattern)
-}
-
-func (e *Engine) GET(route string, handler HandleFunc) {
-	e.addRoute(route_t{Pattern: route, Method: "GET"},handler)
-}
-
-func (e *Engine) POST(route string, handler HandleFunc) {
-	e.addRoute(route_t{Pattern: route, Method: "POST"},handler)
-}
 
 /* entry point */
 func (e *Engine) Run(addr string) (error){
 	return http.ListenAndServe(addr,e)
+}
+
+/* router setting interface exposed to users */
+func (e *Engine) GET(pattern string, handler handleFunc) {
+	e.router.addRoute(route_t{Method: "GET",Pattern: pattern},handler)
+}
+
+func (e *Engine) POST(pattern string, handler handleFunc) {
+	e.router.addRoute(route_t{Method: "POST",Pattern: pattern},handler)
 }
