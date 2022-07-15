@@ -18,7 +18,7 @@ func New() (*Engine) {
 
 /* implement the handler interface */
 func (e *Engine) ServeHTTP(w http.ResponseWriter,req *http.Request) {
-	e.router.handle(newContext(w,req))
+	e.router.handle(newContext(w,req,e))
 }
 
 
@@ -29,9 +29,9 @@ func (e *Engine) Run(addr string) (error){
 
 /* router setting interface exposed to users */
 func (e *Engine) GET(pattern string, handler handleFunc) {
-	e.router.addRoute(route_t{Method: "GET",Pattern: pattern},handler)
+	e.router.addRoute(route_t{method: "GET",pattern: pattern},handler)
 }
 
 func (e *Engine) POST(pattern string, handler handleFunc) {
-	e.router.addRoute(route_t{Method: "POST",Pattern: pattern},handler)
+	e.router.addRoute(route_t{method: "POST",pattern: pattern},handler)
 }

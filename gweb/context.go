@@ -7,10 +7,13 @@ import (
 )
 
 type Context struct {
-	W http.ResponseWriter
-	Request *http.Request
-	Route route_t
-	StatusCode int
+	w http.ResponseWriter;
+	request *http.Request;
+	method string;
+	path string;
+	statusCode int;
+	parmas map[string]string;
+	pattern string;
 }
 type AnyMap map[interface{}]interface{}
 
@@ -22,32 +25,61 @@ func (m AnyMap) MarshalJSON() ([]byte, error) {
 	return json.Marshal(inter_map)
 }
 
-func newContext(w http.ResponseWriter, request *http.Request) (*Context) {
+func newContext(w http.ResponseWriter, request *http.Request, e *Engine) (*Context) {
+	pattern,params := e.router.retrieve(request.Method,request.URL.Path)
 	return &Context{
-		W: w,
-		Request: request,
-		Route: route_t{Method: request.Method, Pattern: request.URL.Path},
+		w: w,
+		request: request,
+		method: request.Method,
+		path: request.URL.Path,
+		parmas: params,
+		pattern: pattern,
 	}
 }
-/* http.Request Gets */
-func (c *Context) GetRequestPost(key string) (string) {
-	return c.Request.FormValue(key)
+/* Getters */
+
+func (c *Context) GetRequest() (*http.Request) {
+	return c.request
 }
 
+func (c *Context) GetRequestPost(key string) (string) {
+	return c.request.FormValue(key)
+}
+
+func (c *Context) GetParmas(key string) (string,bool) {
+	parma, ok := c.parmas[key]
+	return parma,ok
+}
 
 func (c *Context) GetRequestQuery(key string) (string) {
-	return c.Request.URL.Query().Get(key)
+	return c.request.URL.Query().Get(key)
 }
 
+func (c *Context) GetPath() (string) {
+	return c.path
+}
 
+func (c *Context) GetMethod() (string) {
+	return c.method
+}
+
+func (c *Context) GetWriter() (http.ResponseWriter) {
+	return c.w
+}
+
+func (c *Context) GetStatusCode() (int) {
+	return c.statusCode
+}
+
+/* Setters */
 /* Response Set (Mainly Helper Functions) */
 func (c *Context) SetResponseStatus(statusCode int){
-	c.StatusCode = statusCode
-	c.W.WriteHeader(statusCode)
+	c.statusCode = statusCode
+	c.w.WriteHeader(statusCode)
 }
 
 func (c *Context) SetResponseHeader(key string, value string) {
-	c.W.Header().Set(key,value)
+	c.w.Header().Set(key,value)
 }
 
 /* Response Send (Main User Interfaces) */
@@ -55,26 +87,26 @@ func (c *Context) SetResponseHeader(key string, value string) {
 func (c *Context) SendHttp(statusCode int, payload string) (error) {
 	c.SetResponseStatus(statusCode)
 	c.SetResponseHeader("Content-Type","text/html")
-	_,err := c.W.Write([]byte(payload))
+	_,err := c.w.Write([]byte(payload))
 	return err
 }
 
 func (c *Context) SendJSON(statusCode int, payload interface{}) (error){
 	c.SetResponseStatus(statusCode)
 	c.SetResponseHeader("Content-Type","application/json")
-	return json.NewEncoder(c.W).Encode(payload)
+	return json.NewEncoder(c.w).Encode(payload)
 }
 
 func (c *Context) SendString(statusCode int, format string, values ...interface{}) (error){
 	c.SetResponseStatus(statusCode)
 	c.SetResponseHeader("Content-Type","text/plain")
-	_,err := fmt.Fprintf(c.W,format,values...)
+	_,err := fmt.Fprintf(c.w,format,values...)
 	return err
 }
 
 func (c *Context) SendData(statusCode int, payload []byte) (error){
 	c.SetResponseStatus(statusCode)
-	_,err := c.W.Write(payload)
+	_,err := c.w.Write(payload)
 	return err
 }
 

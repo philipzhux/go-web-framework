@@ -22,9 +22,10 @@ func newNode(name string, wildcard bool) (*node){
 	}
 }
 
-/* to insert a pattern, only single matched node is required */
-func (this *node) singleMatch(name string) (*node){
-	for _,child:=range this.children {
+/* for insert, only single matched node is required */
+/* insert must match name strictly */
+func (n *node) singleMatch(name string) (*node){
+	for _,child:=range n.children {
 		if child.name==name {
 			return child
 		}
@@ -33,34 +34,37 @@ func (this *node) singleMatch(name string) (*node){
 }
 
 /* to match a pattern, an exhausted search at non-leaf level is needed */
-func (this *node) exhaustiveMatch(name string) ([]*node){
+func (n *node) exhaustiveMatch(name string) ([]*node){
 	ret := make([]*node,0)
-	for _,child:=range this.children {
-		if child.name==name {
+	for _,child:=range n.children {
+		if child.wildcard || child.name==name{
 			ret = append(ret, child)
 		}
 	}
 	return ret
 }
 
-func (this *node) insertPattern(names []string,full_pattern string,depth int) {
-	if depth==len(names){
-		this.leaf_pattern = full_pattern
+func (n *node) insertPattern(names []string,full_pattern string,depth int) {
+	if depth==len(names) || strings.HasPrefix(n.name,"*"){
+		n.leaf_pattern = full_pattern
 		return
 	}
-	matched_child := this.singleMatch(names[depth])
+	matched_child := n.singleMatch(names[depth])
 	if matched_child==nil {
-		matched_child = newNode(names[depth],names[depth][0]=='*'||names[depth][0]==':')
-		this.children = append(this.children,matched_child)
+		matched_child = newNode(names[depth],strings.HasPrefix(names[depth],"*")||strings.HasPrefix(names[depth],":"))
+		if strings.HasPrefix(names[depth],"*") {
+			matched_child.name = strings.Join(names[depth:],"/")
+		}
+		n.children = append(n.children,matched_child)
 	}
 	matched_child.insertPattern(names, full_pattern, depth+1)
 }
 
-func (this *node) getPattern(names []string,depth int) string{
-	if depth==len(names){
-		return this.leaf_pattern
+func (n *node) getPattern(names []string,depth int) string{
+	if depth==len(names) || strings.HasPrefix(n.name,"*"){
+		return n.leaf_pattern
 	}
-	matched_children := this.exhaustiveMatch(names[depth])
+	matched_children := n.exhaustiveMatch(names[depth])
 	for _,matched_child := range matched_children{
 		ret := matched_child.getPattern(names, depth+1)
 		if ret!= PATTERN_NON_EXIST {
@@ -71,5 +75,13 @@ func (this *node) getPattern(names []string,depth int) string{
 }
 
 func parsePath(path string) []string {
-	
+	splits := strings.Split(path,"/")
+	var i int
+	var v string
+	for i,v = range splits {
+		if len(v)>0 {
+			break
+		}
+	}
+	return splits[i:]
 }
