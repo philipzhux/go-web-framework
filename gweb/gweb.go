@@ -6,14 +6,23 @@ import (
 
 
 type Engine struct{
+	*Group
 	router *router_t
+	groups []*Group
 }
 
 type handleFunc func(*Context)
 
 func New() (*Engine) {
 	log.SetPrefix("[gweb] ")
-	return &Engine{newRouter()}
+	eng := &Engine{
+		router:newRouter(),
+		groups: make([]*Group,0),
+		Group: &Group{},
+	}
+	eng.middleWares = make([]handleFunc, 0)
+	eng.engine = eng
+	return eng
 }
 
 /* implement the handler interface */
@@ -23,15 +32,6 @@ func (e *Engine) ServeHTTP(w http.ResponseWriter,req *http.Request) {
 
 
 /* entry point */
-func (e *Engine) Run(addr string) (error){
+func (e *Engine) Run(addr string) (error) {
 	return http.ListenAndServe(addr,e)
-}
-
-/* router setting interface exposed to users */
-func (e *Engine) GET(pattern string, handler handleFunc) {
-	e.router.addRoute(route_t{method: "GET",pattern: pattern},handler)
-}
-
-func (e *Engine) POST(pattern string, handler handleFunc) {
-	e.router.addRoute(route_t{method: "POST",pattern: pattern},handler)
 }
